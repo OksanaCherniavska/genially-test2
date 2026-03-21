@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Darts vs Computer</title>
+  <style>
+    :root{
+      --bg1:#0d1b2a;
+      --bg2:#1b263b;
+      --panel:#ffffffee;
+      --text:#102033;
+      --accent:#ffb703;
+      --accent2:#219ebc;
+      --danger:#e63946;
+      --success:#2a9d8f;
+      --shadow:0 18px 40px rgba(0,0,0,.28);
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      width:100%;
+      height:100%;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow:hidden;
+      background:
+        radial-gradient(circle at top, #415a77 0%, transparent 30%),
+        linear-gradient(160deg, var(--bg1), var(--bg2));
+      color:#fff;
+    }
+
+    .game-wrap{
+      width:100vw;
+      height:100vh;
+      aspect-ratio:16 / 9;
+      display:grid;
+      grid-template-columns: 340px 1fr 320px;
+      gap:18px;
+      padding:18px;
+    }
+
+    .panel{
+      background:rgba(255,255,255,.1);
+      backdrop-filter: blur(8px);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:20px;
+    }
+
+    .left-panel, .right-panel{
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+
+    .title{
+      font-size:2rem;
+      font-weight:800;
+      line-height:1.1;
+      margin:0 0 10px;
+      color:#fff;
+    }
+
+    .subtitle{
+      font-size:1rem;
+      line-height:1.5;
+      opacity:.92;
+      margin:0 0 18px;
+    }
+
+    .score-box{
+      display:grid;
+      gap:14px;
+      margin-top:8px;
+    }
+
+    .score-card{
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:18px;
+      padding:16px;
+    }
+
+    .score-label{
+      font-size:.95rem;
+      opacity:.9;
+      margin-bottom:8px;
+    }
+
+    .score-value{
+      font-size:2.6rem;
+      font-weight:800;
+      line-height:1;
+    }
+
+    .target{
+      color:#ffd166;
+    }
+
+    .status{
+      margin-top:16px;
+      background:rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:14px 16px;
+      min-height:74px;
+      line-height:1.45;
+      font-size:1rem;
+    }
+
+    .board-panel{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .stage{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      perspective:1200px;
+      position:relative;
+    }
+
+    .board-wrap{
+      position:relative;
+      width:min(76vh, 74vw);
+      aspect-ratio:1/1;
+      transform:rotateX(18deg);
+      filter: drop-shadow(0 30px 35px rgba(0,0,0,.35));
+    }
+
+    .dartboard{
+      width:100%;
+      height:100%;
+      border-radius:50%;
+      position:relative;
+      cursor:crosshair;
+      overflow:hidden;
+      border:10px solid #7f5539;
+      background:
+        radial-gradient(circle at 50% 50%, #e63946 0 4%, #f1faee 4% 7%, #e63946 7% 11%, #1d3557 11% 15%, #f1faee 15% 24%, #0b1f35 24% 35%, #f1faee 35% 46%, #0b1f35 46% 58%, #f1faee 58% 73%, #1b4332 73% 100%);
+      box-shadow:
+        inset 0 0 0 8px rgba(255,255,255,.08),
+        inset 0 -18px 30px rgba(0,0,0,.22);
+    }
+
+    .dartboard::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:
+        conic-gradient(
+          #d62828 0deg 18deg, #f1faee 18deg 36deg,
+          #d62828 36deg 54deg, #f1faee 54deg 72deg,
+          #d62828 72deg 90deg, #f1faee 90deg 108deg,
+          #d62828 108deg 126deg, #f1faee 126deg 144deg,
+          #d62828 144deg 162deg, #f1faee 162deg 180deg,
+          #d62828 180deg 198deg, #f1faee 198deg 216deg,
+          #d62828 216deg 234deg, #f1faee 234deg 252deg,
+          #d62828 252deg 270deg, #f1faee 270deg 288deg,
+          #d62828 288deg 306deg, #f1faee 306deg 324deg,
+          #d62828 324deg 342deg, #f1faee 342deg 360deg
+        );
+      -webkit-mask: radial-gradient(circle, transparent 0 58%, #000 58% 73%, transparent 73% 84%, #000 84% 100%);
+      mask: radial-gradient(circle, transparent 0 58%, #000 58% 73%, transparent 73% 84%, #000 84% 100%);
+      opacity:.95;
+      pointer-events:none;
+    }
+
+    .board-lines{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      border-radius:50%;
+      background:
+        repeating-conic-gradient(from 0deg, transparent 0 17deg, rgba(255,255,255,.35) 17deg 18deg);
+      mix-blend-mode:overlay;
+      opacity:.55;
+    }
+
+    .highlight{
+      position:absolute;
+      inset:7%;
+      border-radius:50%;
+      background:radial-gradient(circle at 35% 25%, rgba(255,255,255,.22), transparent 35%);
+      pointer-events:none;
+    }
+
+    .center-crosshair{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:18px;
+      height:18px;
+      transform:translate(-50%,-50%);
+      border:2px solid rgba(255,255,255,.85);
+      border-radius:50%;
+      pointer-events:none;
+      box-shadow:0 0 0 10px rgba(255,255,255,.08);
+    }
+
+    .marker{
+      position:absolute;
+      width:18px;
+      height:18px;
+      margin-left:-9px;
+      margin-top:-9px;
+      border-radius:50%;
+      border:2px solid #fff;
+      box-shadow:0 8px 16px rgba(0,0,0,.35);
+      animation:pop .28s ease;
+      z-index:5;
+    }
+
+    .marker.player{ background:#ffd166; }
+    .marker.computer{ background:#90e0ef; }
+
+    .marker::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:28px;
+      height:3px;
+      background:#444;
+      transform-origin:left center;
+      transform:translate(1px,-50%) rotate(-25deg);
+      border-radius:999px;
+      box-shadow:10px 0 0 #c1121f;
+    }
+
+    @keyframes pop{
+      from{ transform:scale(.1); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
+    }
+
+    .controls{
+      display:grid;
+      gap:12px;
+    }
+
+    button{
+      border:none;
+      border-radius:16px;
+      padding:14px 18px;
+      font-size:1rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .15s ease, opacity .2s ease;
+      box-shadow:0 10px 18px rgba(0,0,0,.18);
+    }
+
+    button:hover{ transform:translateY(-2px); }
+    button:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+
+    .btn-primary{
+      background:linear-gradient(135deg, var(--accent), #fb8500);
+      color:#1d1d1d;
+    }
+
+    .btn-secondary{
+      background:linear-gradient(135deg, #8ecae6, var(--accent2));
+      color:#05263a;
+    }
+
+    .legend{
+      display:grid;
+      gap:10px;
+      font-size:.98rem;
+      line-height:1.45;
+    }
+
+    .legend-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:rgba(255,255,255,.08);
+      padding:10px 12px;
+      border-radius:14px;
+    }
+
+    .dot{
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      flex:0 0 auto;
+    }
+
+    .dot.player{ background:#ffd166; }
+    .dot.computer{ background:#90e0ef; }
+    .dot.win{ background:#2a9d8f; }
+
+    .last-throws{
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .mini-log{
+      background:rgba(0,0,0,.18);
+      border-radius:16px;
+      padding:12px;
+      min-height:82px;
+    }
+
+    .mini-log h4{
+      margin:0 0 8px;
+      font-size:1rem;
+    }
+
+    .throw-value{
+      display:inline-block;
+      min-width:34px;
+      text-align:center;
+      padding:7px 8px;
+      margin:4px 6px 0 0;
+      border-radius:10px;
+      font-weight:700;
+      background:rgba(255,255,255,.14);
+    }
+
+    .winner-banner{
+      position:absolute;
+      inset:0;
+      background:rgba(5,16,28,.68);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:20;
+    }
+
+    .winner-banner.show{ display:flex; }
+
+    .winner-card{
+      width:min(640px, 82%);
+      background:#ffffff;
+      color:#102033;
+      border-radius:28px;
+      padding:28px;
+      text-align:center;
+      box-shadow:0 24px 50px rgba(0,0,0,.32);
+    }
+
+    .winner-card h2{
+      margin:0 0 10px;
+      font-size:2.3rem;
+    }
+
+    .winner-card p{
+      margin:0 0 18px;
+      font-size:1.1rem;
+      line-height:1.55;
+    }
+
+    .small{
+      font-size:.92rem;
+      opacity:.9;
+    }
+
+    @media (max-width: 1200px){
+      .game-wrap{
+        grid-template-columns: 290px 1fr 270px;
+        gap:12px;
+        padding:12px;
+      }
+      .title{ font-size:1.7rem; }
+      .score-value{ font-size:2.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrap">
+    <div class="panel left-panel">
+      <div>
+        <h1 class="title">3D Darts<br>vs Computer</h1>
+        <p class="subtitle">
+          Click the dartboard to throw your dart. The computer throws after you.
+          First to <span class="target"><strong>50 points</strong></span> wins.
+        </p>
+
+        <div class="score-box">
+          <div class="score-card">
+            <div class="score-label">Student</div>
+            <div class="score-value" id="playerScore">0</div>
+          </div>
+
+          <div class="score-card">
+            <div class="score-label">Computer</div>
+            <div class="score-value" id="computerScore">0</div>
+          </div>
+        </div>
+
+        <div class="status" id="status">
+          Your turn. Click anywhere on the dartboard to throw.
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-primary" id="newGameBtn">New Game</button>
+        <button class="btn-secondary" id="clearMarksBtn">Clear Darts</button>
+      </div>
+    </div>
+
+    <div class="panel board-panel">
+      <div class="stage">
+        <div class="board-wrap">
+          <div class="dartboard" id="dartboard" aria-label="Dartboard"></div>
+          <div class="board-lines"></div>
+          <div class="highlight"></div>
+          <div class="center-crosshair"></div>
+        </div>
+
+        <div class="winner-banner" id="winnerBanner">
+          <div class="winner-card">
+            <h2 id="winnerTitle">You Win!</h2>
+            <p id="winnerText">Great job! You reached 50 points first.</p>
+            <button class="btn-primary" onclick="resetGame()">Play Again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel right-panel">
+      <div>
+        <div class="legend">
+          <div class="legend-item"><span class="dot player"></span> Your dart = yellow</div>
+          <div class="legend-item"><span class="dot computer"></span> Computer dart = blue</div>
+          <div class="legend-item"><span class="dot win"></span> Bullseye = 20 points</div>
+        </div>
+
+        <div class="last-throws">
+          <div class="mini-log">
+            <h4>Your throws</h4>
+            <div id="playerThrows"></div>
+          </div>
+          <div class="mini-log">
+            <h4>Computer throws</h4>
+            <div id="computerThrows"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="small">
+        Scoring by distance from the center:
+        <br>• Bullseye = 20
+        <br>• Inner ring = 15
+        <br>• Middle ring = 10
+        <br>• Outer ring = 5
+        <br>• Miss = 0
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dartboard = document.getElementById("dartboard");
+    const playerScoreEl = document.getElementById("playerScore");
+    const computerScoreEl = document.getElementById("computerScore");
+    const statusEl = document.getElementById("status");
+    const playerThrowsEl = document.getElementById("playerThrows");
+    const computerThrowsEl = document.getElementById("computerThrows");
+    const winnerBanner = document.getElementById("winnerBanner");
+    const winnerTitle = document.getElementById("winnerTitle");
+    const winnerText = document.getElementById("winnerText");
+    const newGameBtn = document.getElementById("newGameBtn");
+    const clearMarksBtn = document.getElementById("clearMarksBtn");
+
+    let playerScore = 0;
+    let computerScore = 0;
+    let gameOver = false;
+    let waitingForComputer = false;
+
+    function getScoreFromRadius(rNorm){
+      if (rNorm <= 0.08) return 20;
+      if (rNorm <= 0.22) return 15;
+      if (rNorm <= 0.52) return 10;
+      if (rNorm <= 0.92) return 5;
+      return 0;
+    }
+
+    function addMarker(x, y, type){
+      const marker = document.createElement("div");
+      marker.className = `marker ${type}`;
+      marker.style.left = `${x}px`;
+      marker.style.top = `${y}px`;
+      dartboard.appendChild(marker);
+    }
+
+    function updateScores(){
+      playerScoreEl.textContent = playerScore;
+      computerScoreEl.textContent = computerScore;
+    }
+
+    function addThrowLog(targetEl, score){
+      const tag = document.createElement("span");
+      tag.className = "throw-value";
+      tag.textContent = score;
+      targetEl.prepend(tag);
+
+      const all = targetEl.querySelectorAll(".throw-value");
+      if (all.length > 8) {
+        all[all.length - 1].remove();
+      }
+    }
+
+    function endGame(winner){
+      gameOver = true;
+      winnerBanner.classList.add("show");
+
+      if (winner === "player") {
+        winnerTitle.textContent = "You Win!";
+        winnerText.textContent = `Amazing! You reached ${playerScore} points before the computer.`;
+      } else {
+        winnerTitle.textContent = "Computer Wins!";
+        winnerText.textContent = `The computer reached ${computerScore} points first. Try again!`;
+      }
+    }
+
+    function playerThrow(event){
+      if (gameOver || waitingForComputer) return;
+
+      const rect = dartboard.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const maxR = rect.width / 2;
+      const rNorm = r / maxR;
+
+      const score = getScoreFromRadius(rNorm);
+
+      addMarker(x, y, "player");
+      playerScore += score;
+      updateScores();
+      addThrowLog(playerThrowsEl, score);
+
+      statusEl.innerHTML = `You scored <strong>${score}</strong> point${score !== 1 ? "s" : ""}. Computer is aiming...`;
+
+      if (playerScore >= 50) {
+        endGame("player");
+        return;
+      }
+
+      waitingForComputer = true;
+      setTimeout(computerThrow, 900);
+    }
+
+    function computerThrow(){
+      if (gameOver) return;
+
+      const rect = dartboard.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const maxR = rect.width / 2;
+
+      // Random throw with slight bias toward the center
+      const angle = Math.random() * Math.PI * 2;
+      const rNorm = Math.pow(Math.random(), 1.6) * 1.05;
+      const r = rNorm * maxR;
+
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+
+      const score = getScoreFromRadius(rNorm);
+
+      addMarker(x, y, "computer");
+      computerScore += score;
+      updateScores();
+      addThrowLog(computerThrowsEl, score);
+
+      if (computerScore >= 50) {
+        statusEl.innerHTML = `Computer scored <strong>${score}</strong> points.`;
+        endGame("computer");
+        return;
+      }
+
+      statusEl.innerHTML = `Computer scored <strong>${score}</strong> points. Your turn — click the dartboard.`;
+      waitingForComputer = false;
+    }
+
+    function clearMarkers(){
+      dartboard.querySelectorAll(".marker").forEach(m => m.remove());
+    }
+
+    function resetGame(){
+      playerScore = 0;
+      computerScore = 0;
+      gameOver = false;
+      waitingForComputer = false;
+      updateScores();
+      clearMarkers();
+      playerThrowsEl.innerHTML = "";
+      computerThrowsEl.innerHTML = "";
+      winnerBanner.classList.remove("show");
+      statusEl.textContent = "Your turn. Click anywhere on the dartboard to throw.";
+    }
+
+    dartboard.addEventListener("click", playerThrow);
+    newGameBtn.addEventListener("click", resetGame);
+    clearMarksBtn.addEventListener("click", clearMarkers);
+
+    updateScores();
+  </script>
+</body>
+</html>
